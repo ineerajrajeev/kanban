@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block head %}
+  {{ super() }}
+  <style type="text/css">
+    .important { color: #336699; }
+  </style>
+{% endblock %}
+{% block content %}
+  <section class="text-gray-600 body-font">
+      <div class="flex flex-col text-center w-full mb-20">
+      <h2 class="text-xs text-indigo-500 tracking-widest font-medium title-font mb-1">Profile</h2>
+      <h1 class="sm:text-3xl text-2xl font-medium title-font mb-4 text-gray-900">{{ data['name'] }} {{ data['surname'] }}</h1>
+      <p class="lg:w-2/3 mx-auto leading-relaxed text-base">Email: {{ data['email'] }} <br> Username: {{ data['uname'] }}</p>
+          <div class="flex justify-center">
+        <button class="inline-flex text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-lg" data-bs-toggle="modal" data-bs-target="#exampleModal">Edit</button></div>
+    </div>
+  </section>
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="font-semibold text-2xl text-gray-800">Edit profile</h3>
+        <button class="bg-grey-500 hover:bg-white-700 text-black font-bold py-2 px-4 border border-grey-700 rounded"
+                  data-bs-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">Close</button>
+      </div>
+      <div class="modal-body">
+            <div class="flex justify-center self-center  z-10">
+            <div class="p-12 bg-white mx-auto rounded-3xl w-96 ">
+                <form method="POST" action="/profile">
+                    <div class="space-y-6">
+                        <div class="">
+                            <input value="{{ data['name'] }}" class=" w-full text-sm  px-4 py-3 bg-gray-200 focus:bg-gray-100 border  border-gray-200 rounded-lg focus:outline-none focus:border-purple-400" type="text" placeholder="Name" name="name">
+                        </div>
+                        <div class="">
+                            <input value="{{ data['surname'] }}" class=" w-full text-sm  px-4 py-3 bg-gray-200 focus:bg-gray-100 border  border-gray-200 rounded-lg focus:outline-none focus:border-purple-400" type="text" placeholder="Surname" name="surname">
+                        </div>
+                        <div class="">
+                            <input value="{{ data['email'] }}" class=" w-full text-sm  px-4 py-3 bg-gray-200 focus:bg-gray-100 border  border-gray-200 rounded-lg focus:outline-none focus:border-purple-400" type="email" placeholder="Email" name="email">
+                        </div>
+                        <div class="">
+                            <input value="{{ data['username'] }}" class=" w-full text-sm  px-4 py-3 bg-gray-200 focus:bg-gray-100 border  border-gray-200 rounded-lg focus:outline-none focus:border-purple-400" type="text" placeholder="Username" name="username">
+                        </div>
+                        <div class="relative" x-data="{ show: true }">
+                            <input placeholder="Password" type="password" class="text-sm text-gray-200 px-4 py-3 rounded-lg w-full bg-gray-200 focus:bg-gray-100 border border-gray-200 focus:outline-none focus:border-purple-400" name="password">
+                            <div class="flex items-center absolute inset-y-0 right-0 mr-3  text-sm leading-5">
+                            </div>
+                        </div>
+                        <button class="inline-flex text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-lg">Edit</button>
+                    </div>
+                </form>
+            </div>
+            </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</section>
+{% endblock %}

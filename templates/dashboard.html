@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block head %}
+  {{ super() }}
+  <style type="text/css">
+    .important { color: #336699; }
+  </style>
+{% endblock %}
+{% block content %}
+  <section class="text-gray-600 body-font overflow-hidden">
+  <div class="container px-5 py-24 mx-auto">
+    <div class="-my-8 divide-y-2 divide-gray-100">
+        <div class="flex flex-col text-center w-full">
+      <h2 class="text-xs text-indigo-500 tracking-widest font-medium title-font">Tasks</h2>
+      <h1 class="sm:text-3xl text-2xl font-medium title-font mb-3 text-gray-900">Your tasks</h1>
+        </div>
+
+<!--        If no tasks found-->
+        {% if tasks == -1 %}
+            <div class="flex flex-col text-center w-full mb-20">
+      <h1 class="sm:text-3xl text-2xl font-medium title-font mb-4 text-red-900">No lists found !</h1>
+            </div>
+        {% else %}
+
+<!--        Loop over lists-->
+            {% for task in tasks %}
+                <div class="py-8 flex flex-wrap md:flex-nowrap">
+                <div class="md:w-64 md:mb-0 mb-6 flex-shrink-0 flex flex-col">
+                  <span class="font-semibold title-font text-gray-700">List</span>
+                  <span class="text-{{ task['color'] }}">{{ task['date'] }}</span>
+                </div>
+                <div class="md:flex-grow">
+                  <h2 class="text-2xl font-medium text-gray-900 title-font mb-2">{{ task['title'] }}</h2>
+                  <p class="leading-relaxed">
+                      {{ task['description'] }}
+                  </p>
+                    <a href="/tasks/{{ task['list_id'] }}" class="text-indigo-500 inline-flex items-center mt-4" target="_blank">More
+                <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14"></path>
+                  <path d="M12 5l7 7-7 7"></path>
+                </svg>
+                </a>
+                    <br><br><hr>
+
+<!--                    Loop over tasks in selected list-->
+                    {% if task['task_data']['task_count'] > 0 %}
+                        {% for i in task['task_data']['task_data'] %}
+                        <div>
+                        <h2 class="tracking-widest text-xs title-font font-medium text-indigo-500 mb-1">{{ i['deadline'] }}</h2>
+                        <h1 class="title-font text-xl font-medium text-gray-900 mb-3">{{ i['task'] }}</h1>
+                        <span>{{ i['description'] }}</span>
+                        <div class="progress" style="height: 20px;">
+                          <div class="progress-bar bg-{{ 'primary' if i['progress'] != 100 else 'success'}}" role="progressbar" style="width: {{ i['progress'] }}%;" aria-valuenow="{{ i['progress'] }}" aria-valuemin="0" aria-valuemax="100">{{ i['progress'] }}%</div>
+                        </div>
+                        </div>
+                    <br>
+                        {% endfor %}
+                    {% else %}
+                        No lists found <br>
+                    {% endif %}
+                </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
