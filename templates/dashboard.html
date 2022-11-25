@@ -11,14 +11,15 @@
   <div class="container px-5 py-24 mx-auto">
     <div class="-my-8 divide-y-2 divide-gray-100">
         <div class="flex flex-col text-center w-full">
-      <h2 class="text-xs text-indigo-500 tracking-widest font-medium title-font">Tasks</h2>
-      <h1 class="sm:text-3xl text-2xl font-medium title-font mb-3 text-gray-900">Your tasks</h1>
+
+      <h2 class="text-xs text-indigo-500 tracking-widest font-medium title-font">Cards</h2>
+      <h1 class="sm:text-3xl text-2xl font-medium title-font mb-3 text-gray-900">Your cards</h1>
         </div>
 
 <!--        If no tasks found-->
         {% if tasks == -1 %}
             <div class="flex flex-col text-center w-full mb-20">
-      <h1 class="sm:text-3xl text-2xl font-medium title-font mb-4 text-red-900">No lists found !</h1>
+      <h1 class="sm:text-3xl text-2xl font-medium title-font mb-4 text-red-900">No cards found !</h1>
             </div>
         {% else %}
 
@@ -43,8 +44,8 @@
                     <br><br><hr>
 
 <!--                    Loop over tasks in selected list-->
-                    {% if task['task_data']['task_count'] > 0 %}
-                        {% for i in task['task_data']['task_data'] %}
+                    {% if task['listitems']['task_count'] > 0 %}
+                        {% for i in task['listitems']['task_data'] %}
                         <div>
                         <h2 class="tracking-widest text-xs title-font font-medium text-indigo-500 mb-1">{{ i['deadline'] }}</h2>
                         <h1 class="title-font text-xl font-medium text-gray-900 mb-3">{{ i['task'] }}</h1>

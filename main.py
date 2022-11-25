@@ -1,9 +1,4 @@
-from api import *
-
-def format_report(template, data={}):
-    with open(template) as file:
-        template = Template(file.read())
-        return template.render(data)
+from restful import *
 
 @app.route('/', methods=['GET'])
 def index():
@@ -18,8 +13,10 @@ def register_page():
         data = request.form
         res = requests.post('http://localhost:5000/api/register', json=data)
         if res.status_code == 200:
+            flash('You have successfully registered!', 'success')
             return redirect('/')
-        return jsonify({'message': res.json()['message']}), 500
+        flash(res.json()['message'], 'danger')
+        return redirect('/')
     return redirect('/')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -29,7 +26,9 @@ def login_page():
         res = requests.post('http://localhost:5000/api/login', json=data)
         if res.status_code == 200:
             session['kanban'] = res.json()
+            flash('You have successfully logged in', 'success')
             return redirect('/dashboard')
+        flash(res.json()['message'], 'danger')
         return redirect('/')
 
 @app.route('/logout', methods=['GET'])
@@ -41,14 +40,14 @@ def logout_page():
 @token_required
 def dashboard_page(current_user):
     res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
-    data = res.json()['task']
+    data = res.json()['tasks']
     if res.status_code == 200:
-        if data != "":
-            for i in range(len(data)):
-                tasks = requests.get('http://localhost:5000/api/listasks/'+str(data[i]['list_id']), headers={'x-access-tokens': session['kanban']['token']})
-                data[i]['task_data'] = tasks.json()
-        else:
-            data = -1
+        for i in range(len(data)):
+            tasks = requests.get('http://localhost:5000/api/listasks/' + str(data[i]['list_id']),
+                                 headers={'x-access-tokens': session['kanban']['token']})
+            data[i]['listitems'] = tasks.json()
+    elif res.status_code == 404:
+        data = -1
     return render_template('dashboard.html', tasks=data)
 
 @app.route('/profile', methods=['GET','POST'])
@@ -73,14 +72,15 @@ def tasks_page(current_user):
     if request.method == 'GET':
         res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
         shared_list = requests.get('http://localhost:5000/api/tasksdata', headers={'x-access-tokens': session['kanban']['token']})
-        return render_template('tasks.html', tasks=res.json()['task'], shared_list=shared_list.json())
+        return render_template('tasks.html', tasks=res.json()['tasks'], shared_list=shared_list.json())
     elif request.method == 'POST':
         data = request.form
         res = requests.post('http://localhost:5000/api/listasks', json=data,
                             headers={'x-access-tokens': session['kanban']['token']})
         if res.status_code == 200:
+            flash('You have successfully created a new card '+data['title'], 'success')
             return redirect('/tasks')
-        return jsonify({'message': res.status_code}), 500
+        return jsonify({'message': res.json()}), 500
     return render_template('tasks.html')
 
 @app.route('/tasks/<id>', methods=['GET', 'POST'])
@@ -134,8 +134,10 @@ def add_task_page(current_user, id):
         res = requests.post('http://localhost:5000/api/listasks/' + id + '/add', json=data,
                             headers={'x-access-tokens': session['kanban']['token']})
         if res.status_code == 200:
+            flash('You have successfully created a new task '+data['task'], 'success')
             return redirect('/tasks/'+id)
-        return jsonify({'message': res.status_code}), 500
+        flash('Failed to create a new task '+data['title'], 'danger')
+        return redirect('/tasks/'+id)
 
 @app.route('/tasks/<id>/share', methods=['GET', 'POST'])
 @token_required
@@ -151,6 +153,10 @@ def share_task_page(current_user, id):
         data = request.form
         res = requests.post('http://localhost:5000/api/task/' + id + '/share', json=data,
                             headers={'x-access-tokens': session['kanban']['token']})
+        if res.status_code == 200:
+            flash('You have successfully shared the card with ' + data['username'], 'success')
+            return redirect('/tasks/' + id)
+        flash('You have failed to share the card with ' + data['username'], 'danger')
         return redirect('/tasks/'+id)
 
 @app.route('/tasks/<id>/delete', methods=['POST'])
@@ -158,17 +164,19 @@ def share_task_page(current_user, id):
 def delete_list_page(current_user, id):
     res = requests.delete('http://localhost:5000/api/listasks/' + id, headers={'x-access-tokens': session['kanban']['token']})
     if res.status_code == 200:
+        flash('You have successfully deleted the card', 'success')
         return redirect('/tasks')
+    flash('Failed to delete the card', 'danger')
     return jsonify({'message': res.status_code}), 500
 
 @app.route('/tasks/<page>/<id>/completed', methods=['POST'])
 @token_required
 def completed_task(current_user, page, id):
-    res = requests.post('http://localhost:5000/api/task/'+ id +'/comlete',
+    res = requests.post('http://localhost:5000/api/task/' + id + '/completed',
                         headers={'x-access-tokens': session['kanban']['token']})
     if res.status_code == 200:
         return redirect('/tasks/'+page)
-    return jsonify(res.status_code)
+    return jsonify({'message': res.status_code}), 500
 
 @app.route('/export', methods=['GET','POST'])
 @token_required
@@ -180,7 +188,7 @@ def export_page(current_user):
         end_date = str(request.form.get('enddate'))
         include = request.form.get('include')
         res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
-        data = res.json()['task']
+        data = res.json()['tasks']
         op = []
         if res.status_code == 200:
             if data != "":
@@ -208,7 +216,7 @@ def full_export(current_user):
     res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
     shared_list = requests.get('http://localhost:5000/api/tasksdata',
                                headers={'x-access-tokens': session['kanban']['token']})
-    data = res.json()['task']
+    data = res.json()['tasks']
     if res.status_code == 200:
         if data != "":
             for i in range(len(data)):
@@ -239,6 +247,16 @@ def move_task(current_user, page, id):
         return redirect('/tasks/'+page)
     return jsonify({'message': res.status_code}), 500
 
+@app.route('/sharedtasks/<id>/delete', methods=['POST'])
+@token_required
+def delete_shared_list_page(current_user, id):
+    res = requests.post('http://localhost:5000/api/sharedtask/delete/' + id, headers={'x-access-tokens': session['kanban']['token']})
+    if res.status_code == 200:
+        flash('Task deleted successfully', 'success')
+        return redirect('/tasks')
+    return jsonify({'message': res.status_code}), 500
+
+
 @app.route('/export/pdf')
 @token_required
 def pdf(current_user):
@@ -264,7 +282,7 @@ def pdf(current_user):
 @token_required
 def export_csv(current_user):
     res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
-    data = res.json()['task']
+    data = res.json()['tasks']
     if res.status_code == 200:
         if data != "":
             for i in range(len(data)):
@@ -284,6 +302,20 @@ def export_csv(current_user):
     output.headers["Content-Disposition"] = "attachment; filename=kanban_report_{user}_{time}.csv".format(user=current_user.uname, time=datetime.datetime.utcnow())
     output.headers["Content-type"] = "text/csv"
     return output
+
+
+def allowed_file(filename, ALLOWED_EXTENSIONS=['csv']):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.route('/import/<id>', methods=['GET', 'POST'])
+@token_required
+def import_csv(current_user):
+    if request.method == 'POST':
+        flash('File uploaded successfully', 'success')
+        return redirect('/tasks'+id)
+
 
 db.create_all()
 if __name__ == '__main__':

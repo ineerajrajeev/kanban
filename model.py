@@ -7,7 +7,7 @@ def token_required(f):
         if 'kanban' in dict(session).keys():
             token = session['kanban']['token']
         elif token is None:
-            return jsonify({'message': 'Token is missing !!'}), 401
+            return make_response(jsonify({'message': 'Token is missing !!'}), 401)
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = userdetails.query.filter_by(public_id=data['public_id']).first()
@@ -15,7 +15,7 @@ def token_required(f):
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, jwt.InvalidSignatureError):
             return None
         except Exception as e:
-            return jsonify({'message': e}), 401
+            return make_response(jsonify({'message': e}), 401)
     return decorated
 
 
@@ -26,12 +26,12 @@ def token_required_api(f):
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
         if not token:
-            return jsonify({'message': 'Token is missing!'}), 401
+            return make_response(jsonify({'message': 'Token is missing!'}), 401)
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = userdetails.query.filter_by(public_id=data['public_id']).first()
         except:
-            return jsonify({'message': 'Token is invalid!'}), 401
+            return make_response(jsonify({'message': 'Token is invalid!'}), 401)
         return f(current_user, *args, **kwargs)
     return decorated
 
@@ -67,7 +67,7 @@ class userdetails(db.Model):
         }
 
 
-class listasks(db.Model):
+class cards(db.Model):
     list_id = db.Column(db.Integer, primary_key=True, autoincrement=True, nullable=False)
     title = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(50), nullable=False)
@@ -93,13 +93,13 @@ class listasks(db.Model):
         return '<Task %r>' % self.title
 
 
-class tasks(db.Model):
+class listitems(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True, nullable=False)
     task = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(50), nullable=False)
     deadline = db.Column(db.String(50), nullable=False)
     progress = db.Column(db.Integer, nullable=False)
-    list_id = db.Column(db.Integer, db.ForeignKey('listasks.list_id'), nullable=False)
+    list_id = db.Column(db.Integer, db.ForeignKey('cards.list_id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('userdetails.id'), nullable=False)
 
     def __init__(self, task, description, deadline, progress, list_id, user_id):
@@ -127,7 +127,7 @@ class tasks(db.Model):
 
 class sharedlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    list_id = db.Column(db.Integer, db.ForeignKey('listasks.list_id'), nullable=False)
+    list_id = db.Column(db.Integer, db.ForeignKey('cards.list_id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('userdetails.public_id'), nullable=False)
     owner_id = db.Column(db.Integer, db.ForeignKey('userdetails.public_id'), nullable=False)
 
@@ -145,4 +145,29 @@ class sharedlist(db.Model):
             'list_id': self.list_id,
             'user_id': self.user_id,
             'owner_id': self.owner_id
+        }
+
+class progresslog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('listitems.id'), nullable=False)
+    progress = db.Column(db.Integer, nullable=False)
+    date = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('userdetails.id'), nullable=False)
+
+    def __init__(self, task_id, progress, date, user_id):
+        self.task_id = task_id
+        self.progress = progress
+        self.date = date
+        self.user_id = user_id
+
+    def __repr__(self):
+        return '<Task %r>' % self.task
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'task_id': self.task_id,
+            'progress': self.progress,
+            'date': self.date,
+            'user_id': self.user_id
         }
