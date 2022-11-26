@@ -2,6 +2,7 @@ from flask import *
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 import uuid
+import json
 from uuid import uuid4
 import jwt
 from flask_restful import *
@@ -17,8 +18,12 @@ from weasyprint import *
 import csv
 from jinja2 import *
 import pandas as pd
+import redis
+from datetime import timedelta
 
 ALLOWED_EXTENSIONS = set(['csv'])
+
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 def allowed_file(filename):
     return '.' in filename and \

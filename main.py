@@ -1,5 +1,13 @@
 from restful import *
 
+@app.route('/home', methods=['GET'])
+@token_required
+def home(current_user):
+    if request.method == 'GET':
+        redis_client.set('Hello', json.dumps('Hello'))
+        user_details = redis_client.get('Hello')
+        return jsonify({'message': current_user.email}), 500
+
 @app.route('/', methods=['GET'])
 def index():
     res = requests.get('http://localhost:5000/api/home')
@@ -26,6 +34,10 @@ def login_page():
         res = requests.post('http://localhost:5000/api/login', json=data)
         if res.status_code == 200:
             session['kanban'] = res.json()
+            cards = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
+            if cards.status_code == 200:
+                redis_client.set('cards_'+res.json()['user']['public_id'], json.dumps(cards.json()))
+                redis_client.expire('cards_'+res.json()['user']['public_id'], timedelta(hours=12))
             flash('You have successfully logged in', 'success')
             return redirect('/dashboard')
         flash(res.json()['message'], 'danger')
@@ -39,25 +51,41 @@ def logout_page():
 @app.route('/dashboard', methods=['GET'])
 @token_required
 def dashboard_page(current_user):
-    res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
-    data = res.json()['tasks']
-    if res.status_code == 200:
-        for i in range(len(data)):
-            tasks = requests.get('http://localhost:5000/api/listasks/' + str(data[i]['list_id']),
-                                 headers={'x-access-tokens': session['kanban']['token']})
-            data[i]['listitems'] = tasks.json()
-    elif res.status_code == 404:
-        data = -1
+    res = redis_client.get('cards_'+current_user.public_id)
+    if res is None:
+        res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
+        if res.status_code == 200:
+            redis_client.set('cards_'+current_user.public_id, json.dumps(res.json()))
+            redis_client.expire('cards_'+current_user.public_id, timedelta(hours=12))
+            return render_template('dashboard.html', tasks=res.json()['json'])
+        elif res.status_code == 404:
+            return render_template('dashboard.html', tasks=-1)
+    else:
+        res = json.loads(res)
+        data = res['tasks']
+    for i in range(len(data)):
+        tasks = requests.get('http://localhost:5000/api/listasks/' + str(data[i]['list_id']),
+                                headers={'x-access-tokens': session['kanban']['token']})
+        data[i]['listitems'] = tasks.json()
     return render_template('dashboard.html', tasks=data)
 
 @app.route('/profile', methods=['GET','POST'])
 @token_required
 def profile_page(current_user):
     if request.method == 'GET':
-        res = requests.get('http://localhost:5000/api/user', headers={'x-access-tokens': session['kanban']['token']})
-        if res.status_code == 200:
-            return render_template('profile.html', data=res.json()['user'])
-        return jsonify({'message': res.json()['message']}), 500
+        res = redis_client.get('user_'+current_user.public_id)
+        if res is None:
+            res = requests.get('http://localhost:5000/api/user', headers={'x-access-tokens': session['kanban']['token']})
+            if res.status_code == 200:
+                redis_client.set('user_'+current_user.public_id, json.dumps(res.json()))
+                redis_client.expire('user_'+current_user.public_id, timedelta(hours=12))
+                res = res.json()
+            else:
+                flash(res.json()['message'], 'danger')
+                return redirect('/')
+        else:
+            res = json.loads(res)
+        return render_template('profile.html', data=res['user'])
     elif request.method == 'POST':
         data = request.form
         res = requests.post('http://localhost:5000/api/user', json=data,
@@ -70,14 +98,24 @@ def profile_page(current_user):
 @token_required
 def tasks_page(current_user):
     if request.method == 'GET':
-        res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
+        cac = redis_client.get('cards_'+current_user.public_id)
         shared_list = requests.get('http://localhost:5000/api/tasksdata', headers={'x-access-tokens': session['kanban']['token']})
-        return render_template('tasks.html', tasks=res.json()['tasks'], shared_list=shared_list.json())
+        if cac is None:
+            res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
+            redis_client.set('cards_'+current_user.public_id, json.dumps(res.json()))
+            redis_client.expire('cards_'+current_user.public_id, timedelta(hours=12))
+            data = res.json()['tasks']
+            return render_template('tasks.html', tasks=data, shared_list=shared_list.json())
+        else:
+            res = json.loads(cac)
+            data = res['tasks']
+            return render_template('tasks.html', tasks=data, shared_list=shared_list.json())
     elif request.method == 'POST':
         data = request.form
         res = requests.post('http://localhost:5000/api/listasks', json=data,
                             headers={'x-access-tokens': session['kanban']['token']})
         if res.status_code == 200:
+            redis_client.delete('cards_'+current_user.public_id)
             flash('You have successfully created a new card '+data['title'], 'success')
             return redirect('/tasks')
         return jsonify({'message': res.json()}), 500
@@ -88,10 +126,22 @@ def tasks_page(current_user):
 def task_page(current_user, id):
     if request.method == 'GET':
         res = requests.get('http://localhost:5000/api/listasks/' + id, headers={'x-access-tokens': session['kanban']['token']})
-        lists = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
+        lists = redis_client.get('cards_'+current_user.public_id)
+        if lists is None:
+            lists = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
+            if res.status_code == 200:
+                redis_client.set('cards_'+current_user.public_id, json.dumps(res.json()))
+                redis_client.expire('cards_'+current_user.public_id, timedelta(hours=12))
+                lists = res.json()
+            else:
+                flash(res.json()['message'], 'danger')
+                data = -1
+                return redirect('/dashboard')
+        else:
+            lists = json.loads(lists)
         if res.status_code == 200:
             data = res.json()
-            return render_template('viewList.html', data=data['task'], tasks=data['task_data'], lists=lists.json())
+            return render_template('viewList.html', data=data['task'], tasks=data['task_data'], lists=lists)
         return jsonify({'message': res.status_code}), 500
     return redirect('/dashboard')
 
@@ -109,6 +159,8 @@ def edit_task_page(current_user, id):
         res = requests.patch('http://localhost:5000/api/listasks/' + id, json=data,
                             headers={'x-access-tokens': session['kanban']['token']})
         if res.status_code == 200:
+            redis_client.delete('cards_'+current_user.public_id)
+            flash('You have successfully updated the card '+data['title'], 'success')
             return redirect('/tasks/'+id)
         return jsonify({'message': res.status_code}), 500
 
@@ -117,27 +169,22 @@ def edit_task_page(current_user, id):
 def delete_task_page(current_user, page, id):
     res = requests.post('http://localhost:5000/api/task/'+ id + '/delete', headers={'x-access-tokens': session['kanban']['token']})
     if res.status_code == 200:
-        return redirect('/tasks/'+page)
+        redis_client.delete('cards_'+current_user.public_id)
+        flash('Card deleted successfully')
+        return redirect('/tasks')
     return jsonify({'message': res.status_code}), 500
 
 @app.route('/tasks/<id>/add', methods=['GET', 'POST'])
 @token_required
 def add_task_page(current_user, id):
-    if request.method == 'GET':
-        res = requests.get('http://localhost:5000/api/listasks/' + id, headers={'x-access-tokens': session['kanban']['token']})
-        if res.status_code == 200:
-            data = res.json()['task']
-            return render_template('addTask.html', data=data)
-        return jsonify({'message': res.status_code}), 500
-    elif request.method == 'POST':
-        data = request.form
-        res = requests.post('http://localhost:5000/api/listasks/' + id + '/add', json=data,
-                            headers={'x-access-tokens': session['kanban']['token']})
-        if res.status_code == 200:
-            flash('You have successfully created a new task '+data['task'], 'success')
-            return redirect('/tasks/'+id)
-        flash('Failed to create a new task '+data['title'], 'danger')
+    data = request.form
+    res = requests.post('http://localhost:5000/api/listasks/' + id + '/add', json=data,
+                        headers={'x-access-tokens': session['kanban']['token']})
+    if res.status_code == 200:
+        flash('You have successfully created a new task '+data['task'], 'success')
         return redirect('/tasks/'+id)
+    flash('Failed to create a new task '+data['title'], 'danger')
+    return redirect('/tasks/'+id)
 
 @app.route('/tasks/<id>/share', methods=['GET', 'POST'])
 @token_required
@@ -164,6 +211,7 @@ def share_task_page(current_user, id):
 def delete_list_page(current_user, id):
     res = requests.delete('http://localhost:5000/api/listasks/' + id, headers={'x-access-tokens': session['kanban']['token']})
     if res.status_code == 200:
+        redis_client.delete('cards_'+current_user.public_id)
         flash('You have successfully deleted the card', 'success')
         return redirect('/tasks')
     flash('Failed to delete the card', 'danger')
@@ -214,10 +262,18 @@ def export_page(current_user):
 @app.route('/export/fullexport', methods=['GET'])
 @token_required
 def full_export(current_user):
+    res = redis_client.get('cards_'+current_user.public_id)
+    if res is None:
+        res = requests.get('http://localhost:5000/api/listasks',
+        headers={'x-access-tokens': session['kanban']['token']})
+        data = res.json()['tasks']
+        redis_client.set('cards_'+current_user.public_id, json.dumps(data))
+        redis_client.expire('cards_'+current_user.public_id, timedelta(hours=1))
+    else:
+        data = json.loads(res)['tasks']
     res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
     shared_list = requests.get('http://localhost:5000/api/tasksdata',
                                headers={'x-access-tokens': session['kanban']['token']})
-    data = res.json()['tasks']
     if res.status_code == 200:
         if data != "":
             for i in range(len(data)):
