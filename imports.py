@@ -17,7 +17,6 @@ import io
 from weasyprint import *
 import csv
 from jinja2 import *
-import pandas as pd
 import redis
 from datetime import timedelta
 
