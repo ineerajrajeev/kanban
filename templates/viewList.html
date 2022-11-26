@@ -209,8 +209,7 @@
                     <div class="input-group">
                       <select class="form-select" id="inputGroupSelect04" aria-label="Example select with button addon" name="moveto" required>
                         {% for list_title in lists['tasks'] %}
-                            <option value="{{ list_title['list_id'] }}"{% if list_title['list_id'] == data['id'] %} >{{ list_title['list_id'] }}
-                          Selected {% endif %}>{{ list_title['title'] }}</option>
+                            <option value="{{ list_title['list_id'] }}">{{ list_title['title'] }}</option>
                           </option>
                         {% endfor %}
                       </select>

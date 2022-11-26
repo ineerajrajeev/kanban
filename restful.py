@@ -318,12 +318,12 @@ class movetask(Resource):
 
     def post(self, current_user, task_id):
         args = request.json
-        task_data = listitems.query.filter_by(user_id=current_user.public_id, task_id=task_id).first()
-        if not task_data:
-            return make_response(jsonify({'message': 'Task not found'}), 404)
-        task_data.list_id = args['list_id']
+        task_data = listitems.query.filter_by(user_id=current_user.public_id, id=task_id).first()
+        args = request.get_json(force=True)
+        task_data.list_id = args['moveto']
         db.session.commit()
-        return make_response(jsonify({'message': 'Task moved'}), 200)
+        return jsonify({'message': 'Task moved'}), 200
+        
 
 
 api.add_resource(movetask, '/api/task/<task_id>/movetask')

@@ -276,7 +276,7 @@ def full_export(current_user):
 @token_required
 def update_task(current_user, page, id):
     data = request.form
-    res = requests.post('http://localhost:5000/api/task/' + page+'/updateprogress', json=data,
+    res = requests.post('http://localhost:5000/api/task/'+ page+'/updateprogress', json=data,
                          headers={'x-access-tokens': session['kanban']['token']})
     if res.status_code == 200:
         return redirect('/tasks/'+page)
@@ -286,11 +286,11 @@ def update_task(current_user, page, id):
 @token_required
 def move_task(current_user, page, id):
     data = request.form
-    res = requests.post('http://localhost:5000/api/task/' + id+'/movetask', json=data,
+    res = requests.post('http://localhost:5000/api/task/'+id+'/movetask', json=data,
                          headers={'x-access-tokens': session['kanban']['token']})
     if res.status_code == 200:
         return redirect('/tasks/'+page)
-    return jsonify({'message': res.status_code}), 500
+    return redirect('/tasks/'+page)
 
 @app.route('/sharedtasks/<id>/delete', methods=['POST'])
 @token_required
