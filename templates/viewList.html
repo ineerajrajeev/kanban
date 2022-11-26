@@ -13,7 +13,11 @@
       <p class="leading-relaxed mt-4">{{ data['date'] }}</p>
       <h1 class="title-font font-medium text-3xl text-gray-900">{{ data['title'] }}</h1>
       <h4 class="leading-relaxed mt-4">{{ data['description'] }}</h4>
-
+      <a href="/tasks/{{ data['list_id'] }}/summary">
+      <button class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 border border-blue-700 rounded">
+          Summary
+        </button>
+      </a>
         <button class="bg-red-500 hover:bg-orange-700 text-white font-bold py-2 px-4 border border-red-700 rounded"
                 data-bs-toggle="modal" data-bs-target="#delete">
           Delete
@@ -75,7 +79,6 @@
             </div>
           </div>
         </div>
-
         <button class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 border border-yellow-700 rounded"
                     data-bs-toggle="modal" data-bs-target="#share">
           Share
@@ -164,7 +167,7 @@
               </div>
               <div class="modal-body">
                 <div class="p-12 bg-white mx-auto rounded-3xl w-96 ">
-                    <form method="POST" action="/import/{{ data['list_id'] }}">
+                    <form method="POST" action="/tasks/{{ data['list_id'] }}/import" enctype="multipart/form-data">
                         <div class="space-y-6">
                                 <div class="">
                                     <input class=" w-full text-sm  px-4 py-3 bg-gray-200 focus:bg-gray-100 border border-gray-200 rounded-lg focus:outline-none focus:border-purple-400"

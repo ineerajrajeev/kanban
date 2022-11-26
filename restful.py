@@ -121,7 +121,8 @@ api.add_resource(tasks, '/api/listasks')
 
 # API for cards and lists within
 class task(Resource):
-    method_decorators = {'get': [token_required_api], 'patch': [token_required_api], 'delete': [token_required_api]}
+    method_decorators = {'get': [token_required_api], 'patch': [token_required_api],
+                         'delete': [token_required_api], 'post': [token_required_api]}
 
     # Get cards
     def get(self, current_user, task_id):
@@ -160,7 +161,6 @@ class task(Resource):
         db.session.commit()
         return make_response(jsonify({'message': 'Task deleted'}), 200)
 
-
 api.add_resource(task, '/api/listasks/<int:task_id>')
 
 
@@ -174,6 +174,9 @@ class addtask(Resource):
         new_task = listitems(list_id=list_id, description=args['description'], task=args['task'],
                          deadline=args['deadline'], progress=args['progress'], user_id=current_user.public_id)
         db.session.add(new_task)
+        db.session.commit()
+        pl = progresslog(task_id=list_id, progress=args['progress'], user_id=current_user.public_id, date=datetime.datetime.now())
+        db.session.add(pl)
         db.session.commit()
         return make_response(jsonify({'message': 'New task created!'}), 200)
 
@@ -341,3 +344,39 @@ class deletesharedtask(Resource):
 
 api.add_resource(deletesharedtask, '/api/sharedtask/delete/<task_id>')
 
+# API for getting progress log
+class progresslogging(Resource):
+    method_decorators = {'get': [token_required_api]}
+
+    def get(self, current_user, task_id):
+        progress_data = progresslog.query.filter_by(user_id=current_user.public_id, task_id=task_id).all()
+        if not progress_data:
+            return make_response(jsonify({'message': 'No progress log'}), 200)
+        else:
+            ans = [task.serialize() for task in progress_data]
+            return make_response(jsonify(ans), 200)
+        return make_response(jsonify({'message': 'No progress log'}), 200)
+
+api.add_resource(progresslogging, '/api/task/<task_id>/progresslog')
+
+#Import from CSV
+class import_csv(Resource):
+    method_decorators = {'post': [token_required_api]}
+
+    def post(self, current_user, list_id):
+        args = request.json
+        if not args['file']:
+            return make_response(jsonify({'message': 'No file'}), 404)
+        try:
+            csv_file = args['file']
+            csv_file = csv_file.split('\n')
+            for i in csv_file:
+                i = i.split(',')
+                new_task = listitems(user_id=current_user.public_id, list_id=list_id, task_name=i[0], task_desc=i[1], deadline=i[2], progress=i[3])
+                db.session.add(new_task)
+                db.session.commit()
+            return make_response(jsonify({'message': 'Tasks imported'}), 200)
+        except:
+            return make_response(jsonify({'message': 'An error occured'}), 404)
+
+api.add_resource(import_csv, '/api/import/<list_id>')

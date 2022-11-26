@@ -55,12 +55,13 @@
                 ctx,
                 {
                     type: 'bar',
+                    indexAxis: 'y',
                     data: {
-                        labels: {{ tasks['labels'] | safe }},
+                        labels: {{ tasks['labels']|safe }},
                         datasets: [
                             {
                                 label: 'Progress',
-                                data: {{ tasks['values'] | safe }},
+                                data: {{ tasks['progress']|safe }},
                                 backgroundColor: [
                                   'rgba(255, 99, 132, 0.2)',
                                   'rgba(255, 159, 64, 0.2)',
@@ -82,7 +83,24 @@
                                 borderWidth: 1
                             }
                         ]
+                    },
+                    options: {
+                    elements: {
+                      bar: {
+                        borderWidth: 2,
+                      }
+                    },
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                      },
+                      title: {
+                        display: true,
+                        text: '{{tasks['task']['title']}}'
+                      }
                     }
+                  },
                 }
             )
         </script>

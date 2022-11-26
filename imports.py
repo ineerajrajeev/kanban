@@ -16,7 +16,13 @@ import io
 from weasyprint import *
 import csv
 from jinja2 import *
-from celery import Celery
+import pandas as pd
+
+ALLOWED_EXTENSIONS = set(['csv'])
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 app = Flask(__name__, static_url_path='/static')
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -25,8 +31,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config['SECRET_KEY'] = "thisissupersecretkey"
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/1'
+app.config["UPLOAD_FOLDER"] = "static/uploads"
+
 api = Api(
     app
 )
@@ -35,4 +41,3 @@ Session(app)
 app.app_context().push()
 db = SQLAlchemy(app)
 db.init_app(app)
-

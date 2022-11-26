@@ -175,6 +175,7 @@ def completed_task(current_user, page, id):
     res = requests.post('http://localhost:5000/api/task/' + id + '/completed',
                         headers={'x-access-tokens': session['kanban']['token']})
     if res.status_code == 200:
+        flash('You have successfully completed the task', 'success')
         return redirect('/tasks/'+page)
     return jsonify({'message': res.status_code}), 500
 
@@ -231,7 +232,7 @@ def full_export(current_user):
 @token_required
 def update_task(current_user, page, id):
     data = request.form
-    res = requests.post('http://localhost:5000/api/task/' + id+'/updateprogress', json=data,
+    res = requests.post('http://localhost:5000/api/task/' + page+'/updateprogress', json=data,
                          headers={'x-access-tokens': session['kanban']['token']})
     if res.status_code == 200:
         return redirect('/tasks/'+page)
@@ -309,12 +310,84 @@ def allowed_file(filename, ALLOWED_EXTENSIONS=['csv']):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@app.route('/import/<id>', methods=['GET', 'POST'])
+@app.route('/tasks/<task_id>/summary', methods=['GET'])
 @token_required
-def import_csv(current_user):
-    if request.method == 'POST':
-        flash('File uploaded successfully', 'success')
-        return redirect('/tasks'+id)
+def summary_card(current_user, task_id):
+    res = requests.get('http://localhost:5000/api/listasks/' + task_id,
+    headers={'x-access-tokens': session['kanban']['token']})
+    data = res.json()
+    labels = []
+    values = []
+    if res.status_code == 200:
+        if data != "":
+            for i in data['task_data']:
+                labels.append(i['task'])
+                values.append(int(i['progress']))
+        return render_template('summary.html', tasks=data, labels=labels, values=values)
+    return jsonify({'message': res.status_code}), 500
+
+
+@app.route('/summary', methods=['GET'])
+@token_required
+def summary(current_user):
+    output = []
+    res = requests.get('http://localhost:5000/api/listasks', headers={'x-access-tokens': session['kanban']['token']})
+    cards = res.json()['tasks']
+    for i in cards:
+        res = requests.get('http://localhost:5000/api/listasks/' + str(i['list_id']),
+                           headers={'x-access-tokens': session['kanban']['token']})
+        data = res.json()
+        if res.status_code == 200:
+            data['labels'] = [task['task'] for task in data['task_data']]
+            data['progress'] = [task['progress'] for task in data['task_data']]
+            output.append(data)
+        else:
+            return jsonify({'message': res.status_code}), 500
+    return render_template('overall_summary.html', output=output)
+
+
+@app.route('/tasks/<id>/import', methods=['GET', 'POST'])
+@token_required
+def import_from_csv(current_user, id):
+    res = requests.get('http://localhost:5000/api/listasks/' + id,
+                       headers={'x-access-tokens': session['kanban']['token']})
+    data = res.json()
+    if res.status_code == 200:
+        if request.method == 'POST':
+            if 'file' not in request.files:
+                flash('No file part', 'danger')
+                return redirect('/tasks/'+id)
+            file = request.files['file']
+            if file.filename == '':
+                flash('No selected file', 'danger')
+                return redirect('/tasks/'+id)
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                for i in file:
+                    data = i.decode('utf-8').split(',')
+                    if len(data) != 5 and data[1] != '':
+                        return redirect('/tasks/'+id)
+                    try:
+                        task = {
+                            'task': data[1],
+                            'description': data[2],
+                            'progress': data[3].strip(),
+                            'deadline': datetime.datetime.strptime(data[4].strip(), '%d-%m-%Y').strftime('%Y-%m-%d')
+                        }
+                        print(task)
+                        res = requests.post('http://localhost:5000//api/listasks/'+id+'/add',
+                                            json=task,
+                                            headers={'x-access-tokens': session['kanban']['token']})
+                        flash('Task imported successfully: '+data[1], 'success')
+                    except:
+                        break
+                        return redirect('/tasks/'+id)
+                flash('All tasks imported successfully', 'success')
+                return redirect('/tasks/'+id)
+            flash('Invalid file format', 'danger')
+            return redirect('/tasks/'+id)
+    flash('An error occured', 'danger')
+    return redirect('/tasks/'+id)
 
 
 db.create_all()
