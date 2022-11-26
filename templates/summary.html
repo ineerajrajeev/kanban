@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Summary{% endblock %}
+{% block head %}
+  {{ super() }}
+  <style type="text/css">
+    .important { color: #336699; }
+  </style>
+{% endblock %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<section class="text-gray-600 body-font">
+    <div class="container flex flex-wrap px-5 py-24 mx-auto items-center">
+      <div class="md:w-1/2 md:pr-12 md:py-8 md:border-r md:border-b-0 mb-10 md:mb-0 pb-10 border-b border-gray-200">
+        <h1 class="sm:text-3xl text-2xl font-medium title-font mb-2 text-gray-900">{{ tasks['task']['title'] }}</h1>
+        <p class="leading-relaxed text-base">{{ tasks['task']['description'] }}</p>
+        <p class="leading-relaxed text-base">{{ tasks['task']['date'] }}</p>
+        <p class="leading-relaxed text-base">{{ graph }}</p>
+        <a class="text-indigo-500 inline-flex items-center mt-4" href="/tasks/{{ tasks['task']['list_id'] }}">Learn More
+          <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-2" viewBox="0 0 24 24">
+            <path d="M5 12h14M12 5l7 7-7 7"></path>
+          </svg>
+        </a>
+        <br><br><br>
+        {% if tasks['task_count'] > 0%}
+            {% for task in tasks['task_data'] %}
+                <div class="h-full flex items-start">
+                <div class="w-12 flex-shrink-0 flex flex-col text-center leading-none">
+                    <span class="text-gray-500 pb-2 mb-2 border-b-2 border-gray-200">Progress</span>
+                    <span class="font-small text-lg text-gray-800 title-font leading-none">{{ task['progress'] }}%</span>
+                </div>
+                <div class="flex-grow pl-6">
+                    <h2 class="tracking-widest text-xs title-font font-medium text-indigo-500 mb-1">{{ task['deadline'] }}</h2>
+                    <h1 class="title-font text-xl font-medium text-gray-900 mb-3">{{ task['task'] }}</h1>
+                    <p class="leading-relaxed mb-5">{{ task['description'] }}</p>
+                </div>
+                </div>
+            {% endfor %}
+        {% else %}
+        <p class="important">No tasks found.</p>
+        {% endif %}
+      </div>
+      <div class="flex flex-col md:w-1/2 md:pl-12">
+        <h2 class="title-font font-semibold text-gray-800 tracking-wider text-sm mb-3">Plots</h2>
+        <canvas id='barchart' width='200' height='200'>
+
+        </canvas>
+        <script>
+            var ctx = document.getElementById('barchart').getContext('2d');
+            var barchart = new Chart(
+                ctx,
+                {
+                    type: 'bar',
+                    data: {
+                        labels: {{ labels | safe }},
+                        datasets: [
+                            {
+                                label: 'Progress',
+                                data: {{ values | safe }},
+                                backgroundColor: [
+                                  'rgba(255, 99, 132, 0.2)',
+                                  'rgba(255, 159, 64, 0.2)',
+                                  'rgba(255, 205, 86, 0.2)',
+                                  'rgba(75, 192, 192, 0.2)',
+                                  'rgba(54, 162, 235, 0.2)',
+                                  'rgba(153, 102, 255, 0.2)',
+                                  'rgba(201, 203, 207, 0.2)'
+                                ],
+                                borderColor: [
+                                  'rgb(255, 99, 132)',
+                                  'rgb(255, 159, 64)',
+                                  'rgb(255, 205, 86)',
+                                  'rgb(75, 192, 192)',
+                                  'rgb(54, 162, 235)',
+                                  'rgb(153, 102, 255)',
+                                  'rgb(201, 203, 207)'
+                                ],
+                                borderWidth: 1
+                            }
+                        ]
+                    }
+                }
+            )
+        </script>
+      </div>
+    </div>
+  </section>
+{% endblock %}
